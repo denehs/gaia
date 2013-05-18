@@ -61,6 +61,12 @@ Icon.prototype = {
            (descriptor.entry_point ? descriptor.entry_point : '');
   },
 
+  isOffline: function icon_isOffline() {
+    return (this.descriptor.isHosted &&
+      !this.descriptor.hasOfflineCache ||
+      this.descriptor.isBookmark);
+  },
+
   /*
    * Renders the icon into the page
    *
@@ -114,6 +120,21 @@ Icon.prototype = {
     }
     icon.appendChild(img);
 
+    // Offline icon if is the case
+    if (this.isOffline()) { 
+      img.dataset.connectivity = 'online';     
+
+      var imgOffline = this.imgOffline = new Image();
+      imgOffline.setAttribute('role', 'presentation');
+      imgOffline.width = MAX_ICON_SIZE + 4 * SCALE_RATIO;
+      imgOffline.height = MAX_ICON_SIZE + 4 * SCALE_RATIO;
+      imgOffline.dataset.connectivity = 'offline';
+      icon.appendChild(imgOffline);
+      if (this.descriptor.offlineRenderedIcon) {
+        this.displayRenderedIcon(imgOffline);
+      }
+    }
+
     // Label
 
     // wrapper of the label -> overflow text should be centered
@@ -145,6 +166,7 @@ Icon.prototype = {
       container.style.visibility = 'visible';
       icon.classList.add('loading');
     }
+
   },
 
   applyOverflowTextMask: function icon_applyOverflowTextMask() {
@@ -298,13 +320,44 @@ Icon.prototype = {
                   width, height);
     ctx.fill();
 
-    canvas.toBlob(this.renderBlob.bind(this));
+    if (this.isOffline()) {
+      this.createOfflineImage(canvas, ctx);  
+    } else {
+      canvas.toBlob(this.renderBlob.bind(this));
+    }
+  },
+
+  createOfflineImage: function createOfflineImage(canvas, ctx) {
+    canvas.toBlob((function onBlob(blob) {
+      this.renderBlob(blob);
+      var img = document.getElementById('offline-pattern');
+      ctx.globalCompositeOperation = 'destination-out'; 
+    
+      var pattern = ctx.createPattern(img, 'repeat');
+      ctx.rect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = pattern;
+      ctx.fill();
+            
+      canvas.toBlob((function onOfflineBlob(offlineBlob) {
+        this.descriptor.offlineRenderedIcon = offlineBlob;
+        GridManager.markDirtyState();
+        this.displayRenderedIcon(this.imgOffline);
+      }).bind(this));
+    }).bind(this));
   },
 
   // The url that is passed as a parameter to the callback must be revoked
-  loadRenderedIcon: function icon_loadRenderedIcon(callback) {
-    var img = this.img;
-    img.src = window.URL.createObjectURL(this.descriptor.renderedIcon);
+  loadRenderedIcon: function icon_loadRenderedIcon(callback, image) {
+    var img;
+    var blob = this.descriptor.renderedIcon;
+    if (image == null) {
+      img = this.img;
+    } else {
+      img = image;
+      blob = this.descriptor.offlineRenderedIcon;
+    }
+
+    img.src = window.URL.createObjectURL(blob);
     if (callback) {
       img.onload = img.onerror = function done() {
         callback(this.src);
@@ -319,14 +372,17 @@ Icon.prototype = {
     this.displayRenderedIcon();
   },
 
-  displayRenderedIcon: function icon_displayRenderedIcon() {
+  displayRenderedIcon: function icon_displayRenderedIcon(image) {
     var self = this;
     this.loadRenderedIcon(function cleanup(url) {
-      self.img.style.visibility = 'visible';
-      window.URL.revokeObjectURL(url);
-      if (self.needsShow)
-        self.show();
-    });
+      //Change visibility just if is the default case
+      if (image == null) {
+        self.img.style.visibility = 'visible';  
+        window.URL.revokeObjectURL(url);
+        if (self.needsShow)
+          self.show();
+      }
+    }, image);
   },
 
   show: function icon_show() {

@@ -900,6 +900,21 @@ var GridManager = (function() {
   }
 
   /*
+   * Check if an app is packaged, otherwise is hoste
+   */
+  function isPackaged(app) {
+    return app.origin.indexOf('app://') === 0;
+  }
+
+  /*
+   * Check if an app predefines an app cache on the manifest
+   * so we know that when we installed it we downloaded the app
+   */
+  function hasOfflineCache(app) {
+    return app.manifest.appcache_path != null;
+  }
+
+  /*
    * Create Icon objects from the descriptors we save in IndexedDB.
    */
   function convertDescriptorsToIcons(pageState) {
@@ -982,7 +997,10 @@ var GridManager = (function() {
       removable: app.removable,
       name: iconsAndNameHolder.name,
       icon: bestMatchingIcon(app, iconsAndNameHolder),
-      useAsyncPanZoom: app.useAsyncPanZoom
+      useAsyncPanZoom: app.useAsyncPanZoom,
+      isHosted: isPackaged(app) == false,
+      hasOfflineCache: hasOfflineCache(app),
+      isBookmark: app.isBookmark
     };
     if (haveLocale && !app.isBookmark) {
       descriptor.localizedName = iconsAndNameHolder.name;
@@ -1280,5 +1298,6 @@ var GridManager = (function() {
     exitFromEditMode: exitFromEditMode,
 
     ensurePanning: ensurePanning
+
   };
 })();

@@ -96,3 +96,11 @@ li:active {
   opacity: 0.1;
 }
 
+/* Offline mode for hosted apps */
+body[data-online = 'online'] img[data-connectivity = 'offline'] {
+  display: none;
+}
+
+body[data-online = 'offline'] img[data-connectivity = 'online'] {
+  display: none;
+}

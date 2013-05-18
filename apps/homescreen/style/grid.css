@@ -69,6 +69,15 @@
   background: url(../resources/images/delete.png) no-repeat left top;
 }
 
+.apps ol > li span.offline {
+  position: absolute;
+  top: .1rem;
+  width: calc(100% - .5rem);
+  height: 2.6rem;
+  z-index: 2;
+  background: url(images/offline_ribbon.png) no-repeat left top;
+}
+
 /* Container -> icon + label */
 .apps ol > li > div {
   height: 100%;
